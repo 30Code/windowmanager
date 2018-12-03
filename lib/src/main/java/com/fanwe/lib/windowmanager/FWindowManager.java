@@ -104,12 +104,12 @@ public class FWindowManager
         params.height = WindowManager.LayoutParams.WRAP_CONTENT;
 
         int sdkInt = Build.VERSION.SDK_INT;
-        if (sdkInt >= Build.VERSION_CODES.KITKAT && sdkInt <= Build.VERSION_CODES.N)
+        if (sdkInt >= Build.VERSION_CODES.O)
         {
-            params.type = WindowManager.LayoutParams.TYPE_TOAST;
+            params.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
         } else
         {
-            params.type = WindowManager.LayoutParams.TYPE_PHONE;
+            params.type = WindowManager.LayoutParams.TYPE_SYSTEM_ERROR;
         }
 
         params.gravity = Gravity.LEFT | Gravity.TOP;
