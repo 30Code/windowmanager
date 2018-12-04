@@ -1,4 +1,4 @@
-package com.fanwe.windowmanager;
+package cn.linhome.windowmanager;
 
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
