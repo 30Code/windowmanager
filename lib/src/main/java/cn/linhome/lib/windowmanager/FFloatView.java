@@ -16,9 +16,11 @@
 package cn.linhome.lib.windowmanager;
 
 import android.content.Context;
+import android.os.Build;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
@@ -43,7 +45,7 @@ public class FFloatView extends FrameLayout
      *
      * @return
      */
-    public View getContentView()
+    public final View getContentView()
     {
         return mContentView;
     }
@@ -53,7 +55,7 @@ public class FFloatView extends FrameLayout
      *
      * @param layoutId 内容view布局id
      */
-    public void setContentView(int layoutId)
+    public final void setContentView(int layoutId)
     {
         final View view = LayoutInflater.from(getContext()).inflate(layoutId, this, false);
         setContentView(view);
@@ -64,27 +66,21 @@ public class FFloatView extends FrameLayout
      *
      * @param view
      */
-    public void setContentView(View view)
+    public final void setContentView(View view)
     {
-        if (mContentView == view)
-        {
-            return;
-        }
+        final View old = getContentView();
 
-        if (mContentView != null)
+        if (old == view)
+            return;
+
+        if (old != null)
         {
-            if (mContentView.getParent() == this)
-            {
-                removeView(mContentView);
-                mContentView.setLayoutParams(mViewStoreHelper.getParams());
-            }
+            if (old.getParent() == this)
+                removeView(old);
         }
 
         mContentView = view;
-        if (mContentView != null)
-        {
-            onInitContentView(mContentView);
-        }
+        onContentViewChanged(view);
 
         mViewStoreHelper.save(view);
         synchronizeContentViewSizeToFloatView();
@@ -93,17 +89,19 @@ public class FFloatView extends FrameLayout
     /**
      * {@link #setContentView(View)}和{@link #setContentView(int)}之后会触发此方法，可用来初始化内容view
      *
-     * @param contentView
+     * @param contentView 可能为null
      */
-    protected void onInitContentView(View contentView)
+    protected void onContentViewChanged(View contentView)
     {
 
     }
 
     /**
      * 还原内容view到原父容器
+     * <p>
+     * 如果还原成功，当前悬浮view会被移除，并且内容view会被置为null
      */
-    public void restoreContentView()
+    public final void restoreContentView()
     {
         mViewStoreHelper.restore();
     }
@@ -113,7 +111,7 @@ public class FFloatView extends FrameLayout
      *
      * @param viewGroup
      */
-    public void restoreContentViewTo(ViewGroup viewGroup)
+    public final void restoreContentViewTo(ViewGroup viewGroup)
     {
         mViewStoreHelper.restoreTo(viewGroup);
     }
@@ -123,39 +121,36 @@ public class FFloatView extends FrameLayout
      *
      * @return
      */
-    public WindowManager.LayoutParams getWindowParams()
+    public final WindowManager.LayoutParams getWindowParams()
     {
         if (mWindowParams == null)
-        {
             mWindowParams = FWindowManager.newLayoutParams();
-        }
         return mWindowParams;
     }
 
     /**
      * 把内容view的大小同步到悬浮view
      */
-    public void synchronizeContentViewSizeToFloatView()
+    public final void synchronizeContentViewSizeToFloatView()
     {
         final View view = getContentView();
         if (view == null)
-        {
             return;
-        }
+
         final ViewGroup.LayoutParams params = view.getLayoutParams();
         if (params == null)
-        {
             return;
-        }
-        getWindowParams().width = params.width;
-        getWindowParams().height = params.height;
+
+        final WindowManager.LayoutParams windowParams = getWindowParams();
+        windowParams.width = params.width;
+        windowParams.height = params.height;
         updateFloatViewLayout();
     }
 
     /**
      * 更新悬浮view布局
      */
-    public void updateFloatViewLayout()
+    public final void updateFloatViewLayout()
     {
         FWindowManager.getInstance().updateViewLayout(this, getWindowParams());
     }
@@ -165,56 +160,56 @@ public class FFloatView extends FrameLayout
      *
      * @param add
      */
-    public void addToWindow(boolean add)
+    public final void addToWindow(boolean add)
     {
         if (add)
         {
-            addContentViewToFloatView();
+            addContentViewToFloatViewIfNeed();
             FWindowManager.getInstance().addView(this, getWindowParams());
         } else
         {
-            FWindowManager.getInstance().removeViewImmediate(this);
+            FWindowManager.getInstance().removeView(this);
         }
     }
 
     /**
      * 把内容view添加到当前悬浮view
      */
-    private void addContentViewToFloatView()
+    private void addContentViewToFloatViewIfNeed()
     {
         final View view = getContentView();
         if (view == null)
-        {
-            return;
-        }
+            throw new NullPointerException("contentView is null");
+
         if (view.getParent() == this)
-        {
             return;
-        }
 
         ViewStoreHelper.removeViewFromParent(view);
         removeAllViews();
         addView(view);
     }
 
-    /**
-     * 悬浮view是否已经被添加到window
-     *
-     * @return
-     */
-    public boolean isAddedToWindow()
-    {
-        return FWindowManager.getInstance().containsView(this);
-    }
-
     @Override
     public void onViewRemoved(View child)
     {
         super.onViewRemoved(child);
+
+        if (mContentView == child)
+            mContentView = null;
+
         if (getChildCount() <= 0)
-        {
             addToWindow(false);
-        }
+    }
+
+    private static boolean isAttached(View view)
+    {
+        if (view == null)
+            return false;
+
+        if (Build.VERSION.SDK_INT >= 19)
+            return view.isAttachedToWindow();
+        else
+            return view.getWindowToken() != null;
     }
 
     //----------drag logic start----------
@@ -229,7 +224,7 @@ public class FFloatView extends FrameLayout
      *
      * @param draggable
      */
-    public void setDraggable(boolean draggable)
+    public final void setDraggable(boolean draggable)
     {
         mIsDraggable = draggable;
     }
@@ -239,102 +234,101 @@ public class FFloatView extends FrameLayout
      *
      * @return
      */
-    public boolean isDraggable()
+    public final boolean isDraggable()
     {
         return mIsDraggable;
     }
 
-    private FTouchHelper mTouchHelper = new FTouchHelper();
+    private final FTouchHelper mTouchHelper = new FTouchHelper();
+    private boolean mInterceptTouchEvent;
+    private boolean mProcessTouchEvent;
 
-    private boolean dontProcessTouchEvent()
+    private boolean ignoreTouchEvent()
     {
-        return (!mIsDraggable || getContentView() == null || getContentView().getParent() != this);
+        if (getContentView() == null)
+            return true;
+
+        if (!mIsDraggable)
+            return true;
+
+        if (!isAttached(this))
+            return true;
+
+        return false;
     }
 
     private boolean canDrag()
     {
-        boolean result = false;
+        final int touchSlop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
+        if (!mTouchHelper.saveDirection(touchSlop))
+            return false;
 
-        mTouchHelper.saveDirection();
         switch (mTouchHelper.getDirection())
         {
             case MoveLeft:
                 if (FTouchHelper.isScrollToRight(getContentView()))
-                {
-                    result = true;
-                }
+                    return true;
                 break;
             case MoveTop:
                 if (FTouchHelper.isScrollToBottom(getContentView()))
-                {
-                    result = true;
-                }
+                    return true;
                 break;
             case MoveRight:
                 if (FTouchHelper.isScrollToLeft(getContentView()))
-                {
-                    result = true;
-                }
+                    return true;
                 break;
             case MoveBottom:
                 if (FTouchHelper.isScrollToTop(getContentView()))
-                {
-                    result = true;
-                }
+                    return true;
                 break;
         }
-        return result;
+
+        return false;
     }
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev)
     {
-        if (dontProcessTouchEvent())
-        {
-            return false;
-        }
-
-        if (mTouchHelper.isNeedIntercept())
-        {
-            return true;
-        }
         mTouchHelper.processTouchEvent(ev);
+
+        if (ignoreTouchEvent())
+            return false;
+
         switch (ev.getAction())
         {
             case MotionEvent.ACTION_MOVE:
                 if (canDrag())
-                {
-                    mTouchHelper.setNeedIntercept(true);
-                }
+                    mInterceptTouchEvent = true;
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                mInterceptTouchEvent = false;
+                mProcessTouchEvent = false;
                 break;
         }
-        return mTouchHelper.isNeedIntercept();
+        return mInterceptTouchEvent;
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event)
     {
-        if (dontProcessTouchEvent())
-        {
-            return false;
-        }
-
         mTouchHelper.processTouchEvent(event);
+
+        if (ignoreTouchEvent())
+            return false;
+
         switch (event.getAction())
         {
+            case MotionEvent.ACTION_DOWN:
+                return true;
             case MotionEvent.ACTION_MOVE:
-                if (mTouchHelper.isNeedCosume())
+                if (mProcessTouchEvent)
                 {
-                    int dx = (int) mTouchHelper.getDeltaXFrom(FTouchHelper.EVENT_LAST);
-                    int dy = (int) mTouchHelper.getDeltaYFrom(FTouchHelper.EVENT_LAST);
+                    final int maxX = getResources().getDisplayMetrics().widthPixels - getWidth();
+                    final int maxY = getResources().getDisplayMetrics().heightPixels - getHeight();
 
-                    final int screenWidth = getResources().getDisplayMetrics().widthPixels;
-                    final int screenHeight = getResources().getDisplayMetrics().heightPixels;
-                    final int maxX = screenWidth - getContentView().getWidth();
-                    final int maxY = screenHeight - getContentView().getHeight();
-
-                    dx = mTouchHelper.getLegalDeltaX(getWindowParams().x, 0, maxX, dx);
-                    dy = mTouchHelper.getLegalDeltaY(getWindowParams().y, 0, maxY, dy);
+                    final int dx = FTouchHelper.getLegalDelta(getWindowParams().x, 0, maxX, (int) mTouchHelper.getDeltaX());
+                    final int dy = FTouchHelper.getLegalDelta(getWindowParams().y, 0, maxY, (int) mTouchHelper.getDeltaY());
 
                     if (dx != 0 || dy != 0)
                     {
@@ -344,21 +338,20 @@ public class FFloatView extends FrameLayout
                     }
                 } else
                 {
-                    if (canDrag() || mTouchHelper.isNeedIntercept())
+                    if (mInterceptTouchEvent || canDrag())
                     {
-                        mTouchHelper.setNeedCosume(true);
+                        mProcessTouchEvent = true;
                     }
                 }
                 break;
 
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
-
-                mTouchHelper.setNeedIntercept(false);
-                mTouchHelper.setNeedCosume(false);
+                mInterceptTouchEvent = false;
+                mProcessTouchEvent = false;
                 break;
         }
-        return mTouchHelper.isNeedCosume() || event.getAction() == MotionEvent.ACTION_DOWN;
+        return mProcessTouchEvent;
     }
 
     //----------drag logic end----------

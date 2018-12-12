@@ -1,16 +1,16 @@
 apply plugin: 'com.android.library'
 apply plugin: 'com.github.dcendents.android-maven'
 
-group = 'com.github.yangwb1259883028'
+group = 'com.github.30Code'
 
 android {
-    compileSdkVersion 26
+    compileSdkVersion 27
 
     defaultConfig {
         minSdkVersion 15
-        targetSdkVersion 26
-        versionCode 20181203
-        versionName "1.0.12"
+        targetSdkVersion 27
+        versionCode 20181212
+        versionName "1.0.2"
     }
 
     buildTypes {
